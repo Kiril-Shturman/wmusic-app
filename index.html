@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>wMusic</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @font-face{font-family:Gilroy;src:url(fonts/gilroy-medium.woff2) format("woff2");font-weight:500}
+  @font-face{font-family:Gilroy;src:url(fonts/gilroy-semibold.woff2) format("woff2");font-weight:600}
+  @font-face{font-family:Gilroy;src:url(fonts/gilroy-extrabold.woff2) format("woff2");font-weight:800}
+  @font-face{font-family:Hanson;src:url(fonts/Hanson-Bold.otf) format("opentype");font-weight:700}
+  :root{
+    --bg:#08080b; --card:#131317; --card2:#191920; --line:rgba(255,255,255,.06);
+    --tx:#f3f4f6; --sub:#8b8e97; --blue:#2f7cf6; --blue2:#1e6ffb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+  body{font-family:Gilroy,system-ui,sans-serif;background:var(--bg);color:var(--tx);
+    min-height:100vh;position:relative;overflow-x:hidden}
+  body::before{content:"";position:fixed;top:8%;right:-16%;width:60%;height:80%;
+    background:radial-gradient(closest-side,rgba(46,124,246,.55),rgba(46,124,246,.12) 55%,transparent 72%);
+    filter:blur(10px);z-index:0;pointer-events:none}
+  .wrap{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:18px 16px 110px}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .brand{font-family:Hanson,sans-serif;font-weight:700;font-size:22px;letter-spacing:.5px}
+  .top .ava{width:36px;height:36px;border-radius:50%;background:var(--card2);
+    display:grid;place-items:center;border:1px solid var(--line);font-size:15px}
+  .disc{width:92px;height:92px;margin:4px auto 14px;border-radius:50%;
+    background:conic-gradient(from 0deg,#2f7cf6,#7d4bff,#2f7cf6);position:relative;
+    box-shadow:0 12px 40px rgba(46,124,246,.4);animation:spin 8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .disc::before{content:"";position:absolute;inset:7px;border-radius:50%;
+    background:repeating-radial-gradient(#0b0b0f 0 3px,#141419 3px 6px)}
+  .disc::after{content:"";position:absolute;inset:37px;border-radius:50%;
+    background:linear-gradient(135deg,#3d8bff,#1e6ffb)}
+  .hero{text-align:center;margin-bottom:8px}
+  h1{font-family:Gilroy;font-weight:800;font-size:34px;line-height:1;letter-spacing:-1px;margin-bottom:8px}
+  .sub{color:var(--sub);font-size:13px;line-height:1.4;max-width:300px;margin:0 auto}
+  .search{display:flex;gap:9px;margin:16px 0 6px}
+  .search input{flex:1;height:50px;border-radius:15px;border:1px solid var(--line);
+    background:var(--card);color:var(--tx);padding:0 15px;font-family:Gilroy;font-size:15px;font-weight:500;outline:none}
+  .search input::placeholder{color:#6b6e77}
+  .cta{border:0;border-radius:15px;color:#fff;font-family:Gilroy;font-weight:800;font-size:15px;
+    padding:0 20px;cursor:pointer;background:linear-gradient(180deg,#3d8bff,#1866f0);
+    box-shadow:0 8px 26px rgba(46,124,246,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+  .kick{color:var(--blue);font-weight:800;font-size:11px;letter-spacing:2px;margin:22px 2px 10px;display:flex;align-items:center;gap:8px}
+  .kick .sp{flex:1;height:1px;background:var(--line)}
+  /* track rows */
+  .trk{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:15px;padding:10px;margin-bottom:9px;transition:transform .08s,background .15s}
+  .trk:active{transform:scale(.985);background:var(--card2)}
+  .trk .art{width:48px;height:48px;border-radius:11px;flex:none;object-fit:cover;
+    background:linear-gradient(135deg,#26314d,#0e1424)}
+  .trk .rank{width:22px;text-align:center;font-weight:800;color:var(--sub);font-size:13px;flex:none}
+  .trk .m{min-width:0;flex:1}
+  .trk .m b{display:block;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .trk .m span{color:var(--sub);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .trk .dur{color:var(--sub);font-size:12px;margin-right:2px;flex:none}
+  .trk .dl{width:38px;height:38px;border-radius:11px;background:var(--card2);border:1px solid var(--line);
+    display:grid;place-items:center;font-size:16px;color:var(--blue);flex:none}
+  /* tabs */
+  .tabs{display:flex;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:5px;margin:14px 0 4px}
+  .tabs div{flex:1;text-align:center;padding:10px 0;font-weight:600;font-size:13px;color:var(--sub);border-radius:11px;cursor:pointer}
+  .tabs .on{color:#fff;background:linear-gradient(180deg,#3d8bff,#1866f0);font-weight:800}
+  .state{text-align:center;color:var(--sub);font-size:13px;padding:30px 10px}
+  .spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--blue);
+    border-radius:50%;margin:24px auto;animation:ld .7s linear infinite}
+  @keyframes ld{to{transform:rotate(360deg)}}
+  .toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(20px);
+    background:#1e6ffb;color:#fff;font-weight:700;font-size:13px;padding:11px 18px;border-radius:14px;
+    z-index:5;opacity:0;transition:.25s;box-shadow:0 10px 30px rgba(46,124,246,.5)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* bottom nav */
+  .nav{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:3;
+    display:flex;gap:6px;background:rgba(20,20,24,.82);backdrop-filter:blur(14px);
+    border:1px solid var(--line);border-radius:22px;padding:7px}
+  .nav a{width:72px;text-align:center;color:var(--sub);font-size:10px;font-weight:600;padding:6px 0;border-radius:16px;cursor:pointer}
+  .nav a .i{font-size:18px;display:block;margin-bottom:3px}
+  .nav a.on{color:#fff;background:var(--card2)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">Working<span style="color:var(--blue)">Music</span></div>
+      <div class="ava">🎧</div>
+    </div>
+
+    <div class="hero">
+      <div class="disc"></div>
+      <h1>МУЗЫКА</h1>
+      <p class="sub">Любой трек — оригинал в один тап. Жми на песню, и бот пришлёт её в чат.</p>
+      <div class="search">
+        <input id="q" placeholder="Артист, трек или ссылка…" autocomplete="off">
+        <button class="cta" id="go">Найти</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="on" data-tab="charts">🔥 Чарты</div>
+      <div data-tab="search">🔎 Поиск</div>
+    </div>
+
+    <div class="kick" id="kick"><span id="kicktxt">СЕЙЧАС СЛУШАЮТ</span><span class="sp"></span></div>
+    <div id="list"></div>
+  </div>
+
+  <div class="toast" id="toast">Отправил боту ✓</div>
+
+  <div class="nav">
+    <a class="on" data-nav="home"><span class="i">🎵</span>Музыка</a>
+    <a data-nav="mymusic"><span class="i">🎶</span>Моя музыка</a>
+    <a data-nav="premium"><span class="i">⭐</span>Premium</a>
+  </div>
+
+<script>
+const TG = window.Telegram ? window.Telegram.WebApp : null;
+const DEEZER = "https://api.deezer.com";
+const $ = s => document.querySelector(s);
+const list = $("#list"), kicktxt = $("#kicktxt");
+
+if (TG) {
+  TG.ready(); TG.expand();
+  try { TG.setHeaderColor("#08080b"); TG.setBackgroundColor("#08080b"); } catch(e){}
+}
+function haptic(t){ try{ TG && TG.HapticFeedback.impactOccurred(t||"light"); }catch(e){} }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+
+// --- Deezer через JSONP (обход CORS) ---
+let jsonpId = 0;
+function jsonp(url){
+  return new Promise((resolve, reject) => {
+    const cb = "wm_cb_" + (++jsonpId);
+    const s = document.createElement("script");
+    const timer = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, 12000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; s.remove(); }
+    window[cb] = data => { cleanup(); resolve(data); };
+    s.src = url + (url.includes("?")?"&":"?") + "output=jsonp&callback=" + cb;
+    s.onerror = () => { cleanup(); reject(new Error("net")); };
+    document.body.appendChild(s);
+  });
+}
+const fmt = s => { s=+s||0; const m=Math.floor(s/60), r=String(s%60).padStart(2,"0"); return m+":"+r; };
+const esc = s => (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function render(tracks, ranked){
+  if(!tracks || !tracks.length){ list.innerHTML = '<div class="state">Ничего не нашлось 😔</div>'; return; }
+  list.innerHTML = tracks.map((t,i) => {
+    const cover = (t.album && (t.album.cover_small||t.album.cover)) || "";
+    const art = cover ? `<img class="art" src="${cover}" loading="lazy">` : `<div class="art"></div>`;
+    const rank = ranked ? `<div class="rank">${i+1}</div>` : "";
+    return `<div class="trk" data-q="${esc((t.artist&&t.artist.name||'')+' '+t.title)}" data-id="${t.id||''}">
+      ${rank}${art}
+      <div class="m"><b>${esc(t.title)}</b><span>${esc(t.artist&&t.artist.name||'')}</span></div>
+      <div class="dur">${fmt(t.duration)}</div>
+      <div class="dl">⬇</div>
+    </div>`;
+  }).join("");
+  list.querySelectorAll(".trk").forEach(el => el.addEventListener("click", () => {
+    haptic("medium");
+    send({a:"dl", q: el.dataset.q, id: el.dataset.id});
+    toast("Отправил боту — трек придёт в чат ✓");
+  }));
+}
+
+function loading(){ list.innerHTML = '<div class="spin"></div>'; }
+
+async function loadCharts(){
+  kicktxt.textContent = "СЕЙЧАС СЛУШАЮТ"; loading();
+  try{ const d = await jsonp(`${DEEZER}/chart/0/tracks?limit=25`); render((d&&d.data)||[], true); }
+  catch(e){ list.innerHTML = '<div class="state">Не удалось загрузить чарты</div>'; }
+}
+async function doSearch(q){
+  q = (q||"").trim(); if(!q) return;
+  kicktxt.textContent = "РЕЗУЛЬТАТЫ"; loading();
+  try{ const d = await jsonp(`${DEEZER}/search?q=${encodeURIComponent(q)}&limit=30`); render((d&&d.data)||[], false); }
+  catch(e){ list.innerHTML = '<div class="state">Ошибка поиска, попробуй ещё</div>'; }
+}
+
+// отправка действия боту
+function send(obj){
+  const payload = JSON.stringify(obj);
+  if (TG && TG.sendData){ TG.sendData(payload); setTimeout(()=>{ try{TG.close();}catch(e){} }, 300); }
+  else { console.log("sendData:", payload); }
+}
+
+// табы
+document.querySelectorAll(".tabs div").forEach(tab => tab.addEventListener("click", () => {
+  document.querySelectorAll(".tabs div").forEach(t => t.classList.remove("on"));
+  tab.classList.add("on"); haptic();
+  if(tab.dataset.tab === "charts") loadCharts();
+  else { kicktxt.textContent = "ВВЕДИ ЗАПРОС"; list.innerHTML = '<div class="state">Начни печатать артиста или трек выше ☝️</div>'; $("#q").focus(); }
+}));
+
+// поиск
+$("#go").addEventListener("click", () => doSearch($("#q").value));
+$("#q").addEventListener("keydown", e => { if(e.key==="Enter") doSearch($("#q").value); });
+let deb; $("#q").addEventListener("input", e => {
+  clearTimeout(deb); const v = e.target.value.trim();
+  if(v.length < 2) return;
+  deb = setTimeout(() => { document.querySelectorAll(".tabs div").forEach(t=>t.classList.toggle("on", t.dataset.tab==="search")); doSearch(v); }, 450);
+});
+
+// нижняя навигация
+document.querySelectorAll(".nav a").forEach(a => a.addEventListener("click", () => {
+  document.querySelectorAll(".nav a").forEach(x => x.classList.remove("on"));
+  a.classList.add("on"); haptic();
+  const n = a.dataset.nav;
+  if(n === "mymusic"){ send({a:"mymusic"}); toast("Открываю твою музыку…"); }
+  else if(n === "premium"){ send({a:"premium"}); toast("Открываю Premium…"); }
+  else { a.classList.add("on"); }
+}));
+
+// старт
+loadCharts();
+</script>
+</body>
+</html>
