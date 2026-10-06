@@ -72,6 +72,25 @@
   .nav a{width:74px;text-align:center;color:var(--sub);font-size:10px;font-weight:600;padding:6px 0;border-radius:16px;cursor:pointer}
   .nav a .i{font-size:18px;display:block;margin-bottom:3px}
   .nav a.on{color:#fff;background:var(--card2)}
+  /* game */
+  #game{display:none}
+  .gstat{display:flex;justify-content:center;margin:6px 0 18px}
+  .gstat div{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 26px;text-align:center}
+  .gstat span{color:var(--sub);font-size:12px;font-weight:600;display:block}
+  .gstat b{font-size:30px;font-weight:800;color:var(--blue)}
+  .gbtn{width:100%;height:58px;font-size:18px}
+  .gtop{display:flex;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;font-size:13px;color:var(--sub);font-weight:600;margin-bottom:12px}
+  .gtop b{color:#fff;font-weight:800;font-size:15px}
+  .gbar{height:8px;background:var(--card);border-radius:8px;overflow:hidden;margin-bottom:14px}
+  .gbarfill{height:100%;width:100%;background:linear-gradient(90deg,#3d8bff,#7d4bff);transition:width .1s linear}
+  .gnow{text-align:center;color:var(--sub);font-size:13px;font-weight:600;margin-bottom:16px}
+  .gopt{width:100%;background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px 16px;margin-bottom:10px;text-align:left;color:var(--tx);font-family:Gilroy;font-weight:600;font-size:15px;cursor:pointer;transition:.12s}
+  .gopt b{display:block;font-weight:800}.gopt span{color:var(--sub);font-size:12px}
+  .gopt.ok{background:linear-gradient(180deg,#1f9d57,#128043);border-color:transparent;color:#fff}
+  .gopt.no{background:linear-gradient(180deg,#c6413f,#9c2f2d);border-color:transparent;color:#fff}
+  .gopt.dim{opacity:.45}
+  .gresult h1{font-size:52px;color:var(--blue);margin:10px 0 2px}
+  .gresult p{color:var(--sub);margin-bottom:18px}
 </style>
 </head>
 <body>
@@ -92,12 +111,29 @@
       <div id="list"></div>
     </div>
 
+    <!-- ===== ИГРА: Угадай трек ===== -->
+    <div id="game">
+      <div class="hero"><h1 style="font-size:28px">🎮 УГАДАЙ ТРЕК</h1><p class="sub" id="gsub">Слушай отрывок и выбери, что играет. 7 раундов.</p></div>
+      <div id="gstart" style="text-align:center">
+        <div class="gstat"><div><span>Лучший счёт</span><b id="gbest">0</b></div></div>
+        <button class="cta gbtn" id="gplay">▶ Играть</button>
+      </div>
+      <div id="gplayarea" style="display:none">
+        <div class="gtop"><div>Раунд <b id="ground">1</b>/7</div><div>Серия <b id="gstreak">0</b></div><div>Очки <b id="gscore">0</b></div></div>
+        <div class="gbar"><div class="gbarfill" id="gbarfill"></div></div>
+        <div class="gnow" id="gnow">🔊 Слушай…</div>
+        <div id="gopts"></div>
+      </div>
+      <div id="gend" style="display:none;text-align:center"></div>
+    </div>
+
   </div>
 
   <div class="toast" id="toast"></div>
 
   <div class="nav">
     <a class="on" data-nav="home"><span class="i">🎵</span>Музыка</a>
+    <a data-nav="game"><span class="i">🎮</span>Игра</a>
     <a data-nav="mymusic"><span class="i">🎶</span>Моя музыка</a>
   </div>
 
@@ -178,11 +214,91 @@ $("#q").addEventListener("keydown",e=>{if(e.key==="Enter")doSearch($("#q").value
 let deb;$("#q").addEventListener("input",e=>{clearTimeout(deb);const v=e.target.value.trim();if(v.length<2)return;
   deb=setTimeout(()=>{document.querySelectorAll(".tabs div").forEach(t=>t.classList.toggle("on",t.dataset.tab==="search"));doSearch(v);},450);});
 
+// ===== Игра «Угадай трек» =====
+const ROUNDS=7, ROUND_SEC=15;
+let gPool=[], gRound=0, gScore=0, gStreak=0, gAnswer=null, gTimer=null, gTimeLeft=0;
+let gBest=+(localStorage.getItem("wm_best")||0);
+const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
+function showScreen(n){ $("#home").style.display=n==="home"?"block":"none"; $("#game").style.display=n==="game"?"block":"none"; }
+
+async function buildPool(){
+  let pool=[];
+  try{ const d=await jsonp(`${DEEZER}/chart/0/tracks?limit=100`); pool=((d&&d.data)||[]).filter(t=>t.preview&&t.title&&t.artist); }catch(e){}
+  const seen=new Set();
+  pool=pool.filter(t=>{const k=(t.artist.name+t.title).toLowerCase(); if(seen.has(k))return false; seen.add(k); return true;});
+  return shuffle(pool);
+}
+async function gameStart(){
+  $("#gstart").style.display="none"; $("#gend").style.display="none"; $("#gplayarea").style.display="none";
+  $("#gsub").textContent="Готовлю раунды…";
+  gPool=await buildPool();
+  if(gPool.length<8){ $("#gsub").textContent="Не удалось загрузить игру, попробуй ещё."; $("#gstart").style.display="block"; return; }
+  gRound=0; gScore=0; gStreak=0;
+  $("#gsub").textContent="Слушай отрывок и выбери, что играет.";
+  $("#gplayarea").style.display="block"; nextRound();
+}
+function nextRound(){
+  clearInterval(gTimer);
+  if(gRound>=ROUNDS){ gameEnd(); return; }
+  gRound++;
+  $("#ground").textContent=gRound; $("#gstreak").textContent=gStreak; $("#gscore").textContent=gScore;
+  gAnswer=gPool[(gRound-1)%gPool.length];
+  const others=shuffle(gPool.filter(t=>t.id!==gAnswer.id)).slice(0,3);
+  const opts=shuffle([gAnswer,...others]);
+  $("#gnow").textContent="🔊 Слушай…";
+  try{ audio.src=gAnswer.preview; audio.currentTime=0; audio.play().catch(()=>{}); }catch(e){}
+  $("#gopts").innerHTML=opts.map(t=>`<div class="gopt" data-id="${t.id}"><b>${esc(t.title)}</b><span>${esc(t.artist.name)}</span></div>`).join("");
+  $("#gopts").querySelectorAll(".gopt").forEach(el=>el.addEventListener("click",()=>answer(el)));
+  startTimer();
+}
+function startTimer(){
+  gTimeLeft=ROUND_SEC*10; $("#gbarfill").style.width="100%";
+  gTimer=setInterval(()=>{
+    gTimeLeft--; $("#gbarfill").style.width=(gTimeLeft/(ROUND_SEC*10)*100)+"%";
+    if(gTimeLeft<=0){ clearInterval(gTimer); answer(null); }
+  },100);
+}
+function answer(el){
+  clearInterval(gTimer); try{audio.pause();}catch(e){}
+  const correctId=String(gAnswer.id);
+  const correct = el && el.dataset.id===correctId;
+  if(correct){ gScore += 100 + Math.round(gTimeLeft/(ROUND_SEC*10)*100); gStreak++; haptic("medium"); }
+  else { gStreak=0; haptic("heavy"); }
+  $("#gscore").textContent=gScore; $("#gstreak").textContent=gStreak;
+  $("#gopts").querySelectorAll(".gopt").forEach(x=>{
+    if(x.dataset.id===correctId) x.classList.add("ok");
+    else if(el && x===el) x.classList.add("no");
+    else x.classList.add("dim");
+  });
+  $("#gnow").textContent = correct ? "✅ Верно!" : `❌ Это: ${gAnswer.artist.name} — ${gAnswer.title}`;
+  setTimeout(nextRound,1600);
+}
+function gameEnd(){
+  try{audio.pause();}catch(e){}
+  $("#gplayarea").style.display="none";
+  if(gScore>gBest){ gBest=gScore; try{localStorage.setItem("wm_best",gBest);}catch(e){} }
+  $("#gend").style.display="block";
+  $("#gend").innerHTML=`<div class="gresult"><h1>${gScore}</h1><p>очков · лучший ${gBest}</p>
+    <button class="cta gbtn" id="gagain" style="margin-bottom:10px">↻ Ещё раз</button>
+    <button class="cta gbtn" id="gshare" style="background:linear-gradient(180deg,#2aa0ff,#1569e0)">📤 Поделиться результатом</button></div>`;
+  $("#gagain").addEventListener("click",()=>{haptic();gameStart();});
+  $("#gshare").addEventListener("click",()=>{ haptic();
+    const txt=`Я набрал ${gScore} очков в «Угадай трек» 🎮🎧 Обгонишь?`;
+    const url=`https://t.me/share/url?url=${encodeURIComponent("https://t.me/WkingMusicbot")}&text=${encodeURIComponent(txt)}`;
+    if(TG&&TG.openTelegramLink) TG.openTelegramLink(url); else window.open(url,"_blank");
+  });
+}
+$("#gplay").addEventListener("click",()=>{haptic("medium");gameStart();});
+
 // nav
 document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",()=>{
   haptic(); const n=a.dataset.nav;
   if(n==="mymusic"){ send({a:"mymusic"}); toast("Открываю твою музыку…"); return; }
   document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("on")); a.classList.add("on");
+  try{audio.pause();}catch(e){} if(curBtn){curBtn.textContent="▶";curBtn.classList.remove("playing");curBtn=null;}
+  clearInterval(gTimer);
+  if(n==="game"){ showScreen("game"); $("#gbest").textContent=gBest; $("#gstart").style.display="block"; $("#gplayarea").style.display="none"; $("#gend").style.display="none"; }
+  else showScreen("home");
 }));
 
 loadCharts();
