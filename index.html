@@ -173,7 +173,7 @@ function render(tracks, ranked){
     const cover=(t.album&&(t.album.cover_small||t.album.cover))||"";
     const art=cover?`<img class="art" src="${cover}" loading="lazy">`:`<div class="art"></div>`;
     const rank=ranked?`<div class="rank">${i+1}</div>`:"";
-    return `<div class="trk" data-q="${esc((t.artist&&t.artist.name||'')+' '+t.title)}" data-prev="${esc(t.preview||'')}">
+    return `<div class="trk" data-id="${t.id||''}" data-q="${esc((t.artist&&t.artist.name||'')+' '+t.title)}" data-prev="${esc(t.preview||'')}">
       ${rank}${art}
       <div class="m"><b>${esc(t.title)}</b><span>${esc(t.artist&&t.artist.name||'')}</span></div>
       <div class="btn pv">▶</div><div class="btn dl">⬇</div></div>`;
@@ -184,7 +184,8 @@ function render(tracks, ranked){
     el.addEventListener("click",()=>download(el));
   });
 }
-function download(el){ haptic("medium"); send({a:"dl",q:el.dataset.q}); toast("Отправил боту — трек придёт в чат ✓"); }
+function openChat(p){ const url="https://t.me/WkingMusicbot?start="+encodeURIComponent(p); if(TG&&TG.openTelegramLink){TG.openTelegramLink(url);} else {window.open(url,"_blank");} }
+function download(el){ haptic("medium"); const id=el.dataset.id; if(id){ openChat("dl_"+id); } else { send({a:"dl",q:el.dataset.q}); } }
 function loading(){ list.innerHTML='<div class="spin"></div>'; }
 
 async function loadCharts(){ chips.style.display="none"; kicktxt.textContent="СЕЙЧАС СЛУШАЮТ"; loading();
@@ -293,7 +294,7 @@ $("#gplay").addEventListener("click",()=>{haptic("medium");gameStart();});
 // nav
 document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",()=>{
   haptic(); const n=a.dataset.nav;
-  if(n==="mymusic"){ send({a:"mymusic"}); toast("Открываю твою музыку…"); return; }
+  if(n==="mymusic"){ openChat("mymusic"); return; }
   document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("on")); a.classList.add("on");
   try{audio.pause();}catch(e){} if(curBtn){curBtn.textContent="▶";curBtn.classList.remove("playing");curBtn=null;}
   clearInterval(gTimer);
