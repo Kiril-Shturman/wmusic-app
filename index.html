@@ -92,15 +92,6 @@
       <div id="list"></div>
     </div>
 
-    <!-- ===== PREMIUM ===== -->
-    <div id="premium">
-      <div class="hero"><h1 style="font-size:26px">⭐ Premium</h1><p class="sub">Безлимит скачиваний, без ожидания.</p></div>
-      <div class="plist">✓ <b>Безлимит</b> скачиваний<br>✓ Без ожидания и очередей<br>✓ Плейлисты, тексты, Spotify, чарты<br>✓ Поддержка развития бота</div>
-      <div class="pcard" data-plan="week"><div class="star">⭐</div><div class="pt"><b>Неделя</b><span>попробовать</span></div><div class="price"><b>49 ⭐</b><span>~1 неделя</span></div></div>
-      <div class="pcard best" data-plan="month"><div class="star">⭐</div><div class="pt"><b>Месяц</b><span>выгодно · популярно</span></div><div class="price"><b>149 ⭐</b><span>30 дней</span></div></div>
-      <div class="pcard" data-plan="year"><div class="star">⭐</div><div class="pt"><b>Год</b><span>максимальная выгода</span></div><div class="price"><b>990 ⭐</b><span>365 дней</span></div></div>
-      <p class="plist" style="margin-top:14px">Оплата проходит в Telegram звёздами (Stars). После оплаты Premium включится автоматически.</p>
-    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -108,17 +99,11 @@
   <div class="nav">
     <a class="on" data-nav="home"><span class="i">🎵</span>Музыка</a>
     <a data-nav="mymusic"><span class="i">🎶</span>Моя музыка</a>
-    <a data-nav="premium"><span class="i">⭐</span>Premium</a>
   </div>
 
 <script>
 const TG = window.Telegram ? window.Telegram.WebApp : null;
 const DEEZER = "https://api.deezer.com";
-const PLANS = {
-  week:  "https://t.me/$F_TIVZZLIUpRFwAA4CwGaBbGK4w",
-  month: "https://t.me/$yOxFWZZLIUpSFwAAJTMBV4En9jM",
-  year:  "https://t.me/$PLEztpZLIUpTFwAA0pz3uqZguRk"
-};
 const GENRES = [["Поп",132],["Хип-хоп",116],["Рок",152],["Танцы",113],["R&B",165],["Электро",106],["Альтернатива",85],["Джаз",129],["Регги",144],["Фолк",466]];
 const $ = s => document.querySelector(s);
 const list = $("#list"), kicktxt = $("#kicktxt"), chips = $("#chips");
@@ -193,24 +178,11 @@ $("#q").addEventListener("keydown",e=>{if(e.key==="Enter")doSearch($("#q").value
 let deb;$("#q").addEventListener("input",e=>{clearTimeout(deb);const v=e.target.value.trim();if(v.length<2)return;
   deb=setTimeout(()=>{document.querySelectorAll(".tabs div").forEach(t=>t.classList.toggle("on",t.dataset.tab==="search"));doSearch(v);},450);});
 
-// premium
-document.querySelectorAll(".pcard").forEach(c=>c.addEventListener("click",()=>{
-  haptic("medium"); const link=PLANS[c.dataset.plan]; if(!link)return;
-  if(TG&&TG.openInvoice){ TG.openInvoice(link,st=>{ if(st==="paid")toast("Готово! Premium активирован ⭐"); else if(st==="failed")toast("Оплата не прошла"); }); }
-  else toast("Оплата доступна только внутри Telegram");
-}));
-
 // nav
-function showScreen(n){
-  $("#home").style.display = n==="home"?"block":"none";
-  $("#premium").style.display = n==="premium"?"block":"none";
-}
 document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",()=>{
   haptic(); const n=a.dataset.nav;
   if(n==="mymusic"){ send({a:"mymusic"}); toast("Открываю твою музыку…"); return; }
   document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("on")); a.classList.add("on");
-  try{audio.pause();}catch(e){} if(curBtn){curBtn.textContent="▶";curBtn.classList.remove("playing");curBtn=null;}
-  showScreen(n==="premium"?"premium":"home");
 }));
 
 loadCharts();
