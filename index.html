@@ -72,8 +72,35 @@
   .nav a{width:74px;text-align:center;color:var(--sub);font-size:10px;font-weight:600;padding:6px 0;border-radius:16px;cursor:pointer}
   .nav a .i{font-size:18px;display:block;margin-bottom:3px}
   .nav a.on{color:#fff;background:var(--card2)}
+  /* --- полиш: анимации и микро-отклики --- */
+  @keyframes rowin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes screenin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes shimmer{to{background-position:-200% 0}}
+  @keyframes eqb{0%,100%{height:4px}50%{height:15px}}
+  @keyframes pop{0%{transform:scale(.8);opacity:0}100%{transform:scale(1);opacity:1}}
+  .trk{animation:rowin .34s cubic-bezier(.2,.7,.3,1) both}
+  .screenin{animation:screenin .28s cubic-bezier(.2,.7,.3,1) both}
+  .cta,.gbtn,.chip,.trk,.gbanner,.btn,.pcard,.tabs div,.nav a{transition:transform .09s ease,background .15s ease,opacity .15s ease}
+  .cta:active,.gbtn:active,.chip:active,.btn:active{transform:scale(.96)}
+  .skel{height:66px;border-radius:15px;margin-bottom:9px;background:linear-gradient(100deg,#131317 30%,#1b1b22 50%,#131317 70%);background-size:200% 100%;animation:shimmer 1.15s linear infinite}
+  .eq{display:flex;gap:2px;align-items:flex-end;height:16px;justify-content:center}
+  .eq i{width:3px;height:4px;background:#fff;border-radius:2px;animation:eqb .85s ease-in-out infinite}
+  .eq i:nth-child(2){animation-delay:.18s}.eq i:nth-child(3){animation-delay:.36s}
+  .btn.playing{background:linear-gradient(180deg,#3d8bff,#1866f0);border-color:transparent}
+  .gbanner{animation:pop .4s cubic-bezier(.2,.9,.3,1.2) both}
+  h1{animation:pop .4s ease both}
   /* game */
+  .gbanner{display:flex;align-items:center;gap:13px;background:linear-gradient(120deg,#2a1a5a,#3d2b8a 55%,#1e6ffb);border-radius:18px;padding:14px 16px;margin:14px 0 2px;cursor:pointer;box-shadow:0 10px 30px rgba(80,60,220,.28);transition:transform .08s}
+  .gbanner:active{transform:scale(.99)}
+  .gbanner .gbi{font-size:30px}
+  .gbanner .gbt{flex:1}
+  .gbanner .gbt b{display:block;font-weight:800;font-size:17px}
+  .gbanner .gbt span{color:rgba(255,255,255,.78);font-size:12px}
+  .gbanner .gba{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:16px;font-weight:800}
   #game{display:none}
+  #lib{display:none}
+  .trk .art.ic{display:grid;place-items:center;font-size:20px;color:#9fb4e6}
+  .lkback{color:var(--blue);font-weight:800;font-size:13px;cursor:pointer}
   .gstat{display:flex;justify-content:center;margin:6px 0 18px}
   .gstat div{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 26px;text-align:center}
   .gstat span{color:var(--sub);font-size:12px;font-weight:600;display:block}
@@ -91,6 +118,8 @@
   .gopt.dim{opacity:.45}
   .gresult h1{font-size:52px;color:var(--blue);margin:10px 0 2px}
   .gresult p{color:var(--sub);margin-bottom:18px}
+  .trk.lmine{border-color:var(--blue);background:rgba(46,124,246,.12)}
+  #leaders .dur{color:var(--blue);font-weight:800;font-size:15px}
 </style>
 </head>
 <body>
@@ -105,6 +134,7 @@
         <p class="sub">▶ слушай превью, тапни ⬇ — трек придёт в чат.</p>
         <div class="search"><input id="q" placeholder="Артист, трек или ссылка…" autocomplete="off"><button class="cta" id="go">Найти</button></div>
       </div>
+      <div class="gbanner" id="gamebanner"><div class="gbi">🎮</div><div class="gbt"><b>Угадай трек</b><span>Сыграй и попади в топ</span></div><div class="gba">▶</div></div>
       <div class="tabs"><div class="on" data-tab="charts">🔥 Чарты</div><div data-tab="search">🔎 Поиск</div><div data-tab="genres">🎸 Жанры</div></div>
       <div id="chips" class="chips" style="display:none"></div>
       <div class="kick"><span id="kicktxt">СЕЙЧАС СЛУШАЮТ</span><span class="sp"></span></div>
@@ -116,7 +146,8 @@
       <div class="hero"><h1 style="font-size:28px">🎮 УГАДАЙ ТРЕК</h1><p class="sub" id="gsub">Слушай отрывок и выбери, что играет. 7 раундов.</p></div>
       <div id="gstart" style="text-align:center">
         <div class="gstat"><div><span>Лучший счёт</span><b id="gbest">0</b></div></div>
-        <button class="cta gbtn" id="gplay">▶ Играть</button>
+        <button class="cta gbtn" id="gplay" style="margin-bottom:10px">▶ Играть</button>
+        <button class="cta gbtn" id="gleaders" style="background:linear-gradient(180deg,#2a2a33,#1a1a20);border:1px solid var(--line)">🏆 Таблица лидеров</button>
       </div>
       <div id="gplayarea" style="display:none">
         <div class="gtop"><div>Раунд <b id="ground">1</b>/7</div><div>Серия <b id="gstreak">0</b></div><div>Очки <b id="gscore">0</b></div></div>
@@ -127,13 +158,18 @@
       <div id="gend" style="display:none;text-align:center"></div>
     </div>
 
+    <!-- ===== МОЯ МУЗЫКА / ПЛЕЙЛИСТЫ ===== -->
+    <div id="lib">
+      <div class="hero"><h1 style="font-size:28px">🎶 МОЯ МУЗЫКА</h1><p class="sub">Тапни трек — отправлю в чат.</p></div>
+      <div id="libbody"><div class="spin"></div></div>
+    </div>
+
   </div>
 
   <div class="toast" id="toast"></div>
 
   <div class="nav">
     <a class="on" data-nav="home"><span class="i">🎵</span>Музыка</a>
-    <a data-nav="game"><span class="i">🎮</span>Игра</a>
     <a data-nav="mymusic"><span class="i">🎶</span>Моя музыка</a>
   </div>
 
@@ -164,7 +200,7 @@ function playPreview(url, btn){
   if(curBtn===btn){ audio.pause(); btn.textContent="▶"; btn.classList.remove("playing"); curBtn=null; return; }
   if(curBtn){ curBtn.textContent="▶"; curBtn.classList.remove("playing"); }
   audio.src=url; audio.play().catch(()=>toast("Не удалось проиграть"));
-  btn.textContent="⏸"; btn.classList.add("playing"); curBtn=btn;
+  btn.innerHTML='<div class="eq"><i></i><i></i><i></i></div>'; btn.classList.add("playing"); curBtn=btn;
 }
 
 function render(tracks, ranked){
@@ -173,7 +209,7 @@ function render(tracks, ranked){
     const cover=(t.album&&(t.album.cover_small||t.album.cover))||"";
     const art=cover?`<img class="art" src="${cover}" loading="lazy">`:`<div class="art"></div>`;
     const rank=ranked?`<div class="rank">${i+1}</div>`:"";
-    return `<div class="trk" data-id="${t.id||''}" data-q="${esc((t.artist&&t.artist.name||'')+' '+t.title)}" data-prev="${esc(t.preview||'')}">
+    return `<div class="trk" style="animation-delay:${(i*0.035).toFixed(3)}s" data-id="${t.id||''}" data-q="${esc((t.artist&&t.artist.name||'')+' '+t.title)}" data-prev="${esc(t.preview||'')}">
       ${rank}${art}
       <div class="m"><b>${esc(t.title)}</b><span>${esc(t.artist&&t.artist.name||'')}</span></div>
       <div class="btn pv">▶</div><div class="btn dl">⬇</div></div>`;
@@ -184,9 +220,13 @@ function render(tracks, ranked){
     el.addEventListener("click",()=>download(el));
   });
 }
-function openChat(p){ const url="https://t.me/WkingMusicbot?start="+encodeURIComponent(p); if(TG&&TG.openTelegramLink){TG.openTelegramLink(url);} else {window.open(url,"_blank");} }
-function download(el){ haptic("medium"); const id=el.dataset.id; if(id){ openChat("dl_"+id); } else { send({a:"dl",q:el.dataset.q}); } }
-function loading(){ list.innerHTML='<div class="spin"></div>'; }
+// База API: если лапка открыта с ?api=<адрес туннеля> (с GitHub Pages) — берём его;
+// если лапка отдаётся самим туннелем — пусто (относительные пути, тот же origin).
+const API=((new URLSearchParams(location.search)).get("api")||"").replace(/\/+$/,"");
+function apiPost(path, body){ return fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({initData:(TG&&TG.initData)||""},body||{}))}).then(r=>r.json()); }
+function download(el){ haptic("medium"); const id=el.dataset.id; if(!id){toast("Трек недоступен");return;}
+  apiPost("/api/download",{id}).then(d=>toast(d&&d.ok?"⬇ Трек отправлен в чат ✓":"Не удалось скачать")).catch(()=>toast("Ошибка сети")); }
+function loading(){ list.innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join(''); }
 
 async function loadCharts(){ chips.style.display="none"; kicktxt.textContent="СЕЙЧАС СЛУШАЮТ"; loading();
   try{const d=await jsonp(`${DEEZER}/chart/0/tracks?limit=25`); render((d&&d.data)||[],true);}catch(e){list.innerHTML='<div class="state">Не удалось загрузить</div>';} }
@@ -220,7 +260,27 @@ const ROUNDS=7, ROUND_SEC=15;
 let gPool=[], gRound=0, gScore=0, gStreak=0, gAnswer=null, gTimer=null, gTimeLeft=0;
 let gBest=+(localStorage.getItem("wm_best")||0);
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
-function showScreen(n){ $("#home").style.display=n==="home"?"block":"none"; $("#game").style.display=n==="game"?"block":"none"; }
+function showScreen(n){ [["home",n==="home"],["game",n==="game"],["lib",n==="lib"]].forEach(function(p){var el=document.getElementById(p[0]);if(!el)return;el.style.display=p[1]?"block":"none";if(p[1]){el.classList.remove("screenin");void el.offsetWidth;el.classList.add("screenin");}}); }
+
+// ===== Моя музыка / плейлисты (через API бэкенда) =====
+let gLib=null;
+function trackRow(t, pl){ return `<div class="trk saved" data-key="${esc(t.track_key||'')}" ${pl?`data-pl="${pl}"`:""}><div class="art ic">♫</div><div class="m"><b>${esc(t.title||'Без названия')}</b><span>${esc(t.performer||'')}</span></div><div class="btn dl">▶</div></div>`; }
+function bindPlay(scope){ scope.querySelectorAll(".trk.saved").forEach(x=>x.addEventListener("click",()=>{ haptic("medium"); const b={key:x.dataset.key}; if(x.dataset.pl)b.pl_id=x.dataset.pl; apiPost("/api/play",b).then(d=>toast(d&&d.ok?"▶ Отправил в чат ✓":"Не удалось")).catch(()=>toast("Ошибка сети")); })); }
+function loadLibrary(){ const el=$("#libbody"); el.innerHTML='<div class="spin"></div>';
+  apiPost("/api/library",{}).then(d=>{ gLib=d; renderLib(d); }).catch(()=>{ el.innerHTML='<div class="state">Не удалось загрузить. Открой приложение из бота (@WkingMusicbot).</div>'; }); }
+function renderLib(d){ const el=$("#libbody"); const pls=(d&&d.playlists)||[], saved=(d&&d.saved)||[]; let h="";
+  if(pls.length){ h+=`<div class="kick">ПЛЕЙЛИСТЫ<span class="sp"></span></div>`; pls.forEach(p=>{ h+=`<div class="trk plrow" data-pl="${p.pl_id}"><div class="art ic">📂</div><div class="m"><b>${esc(p.name)}</b><span>${(p.tracks?p.tracks.length:(p.cnt||0))} треков</span></div></div>`; }); }
+  h+=`<div class="kick">СОХРАНЁННЫЕ (${saved.length})<span class="sp"></span></div>`;
+  if(!saved.length) h+='<div class="state">Пусто. Сохраняй треки кнопкой «➕ Сохранить» под песней в чате.</div>';
+  else saved.forEach(t=>h+=trackRow(t));
+  el.innerHTML=h;
+  el.querySelectorAll(".trk.plrow").forEach(x=>x.addEventListener("click",()=>showPlaylist(pls.find(p=>String(p.pl_id)===x.dataset.pl))));
+  bindPlay(el);
+}
+function showPlaylist(p){ if(!p)return; const el=$("#libbody"); let h=`<div class="kick"><span class="lkback" id="lkb">← назад</span><span class="sp"></span></div><div class="kick">📂 ${esc(p.name)}<span class="sp"></span></div>`;
+  (p.tracks||[]).forEach(t=>h+=trackRow(t,p.pl_id)); if(!(p.tracks||[]).length)h+='<div class="state">Плейлист пуст</div>';
+  el.innerHTML=h; $("#lkb").addEventListener("click",()=>renderLib(gLib)); bindPlay(el);
+}
 
 async function buildPool(){
   let pool=[];
@@ -278,27 +338,48 @@ function gameEnd(){
   try{audio.pause();}catch(e){}
   $("#gplayarea").style.display="none";
   if(gScore>gBest){ gBest=gScore; try{localStorage.setItem("wm_best",gBest);}catch(e){} }
+  $("#gbest").textContent=gBest;
   $("#gend").style.display="block";
   $("#gend").innerHTML=`<div class="gresult"><h1>${gScore}</h1><p>очков · лучший ${gBest}</p>
     <button class="cta gbtn" id="gagain" style="margin-bottom:10px">↻ Ещё раз</button>
-    <button class="cta gbtn" id="gshare" style="background:linear-gradient(180deg,#2aa0ff,#1569e0)">📤 Поделиться результатом</button></div>`;
+    <button class="cta gbtn" id="gshare" style="background:linear-gradient(180deg,#2aa0ff,#1569e0)">📤 Поделиться результатом</button></div>
+    <div id="leaders"><div class="spin"></div></div>`;
   $("#gagain").addEventListener("click",()=>{haptic();gameStart();});
   $("#gshare").addEventListener("click",()=>{ haptic();
     const txt=`Я набрал ${gScore} очков в «Угадай трек» 🎮🎧 Обгонишь?`;
     const url=`https://t.me/share/url?url=${encodeURIComponent("https://t.me/WkingMusicbot")}&text=${encodeURIComponent(txt)}`;
     if(TG&&TG.openTelegramLink) TG.openTelegramLink(url); else window.open(url,"_blank");
   });
+  apiPost("/api/game/score",{score:gScore}).then(renderLeaders).catch(()=>{const el=$("#leaders");if(el)el.innerHTML="";});
+}
+function renderLeaders(d){
+  const el=$("#leaders"); if(!el)return;
+  const top=(d&&d.top)||[], me=(d&&d.me)||{};
+  let h=`<div class="kick">🏆 ТАБЛИЦА ЛИДЕРОВ<span class="sp"></span></div>`;
+  if(!top.length){ el.innerHTML=h+'<div class="state">Пока пусто — будь первым!</div>'; return; }
+  top.forEach((p,i)=>{ const who=p.me?"Ты":"Игрок"; const medal=i<3?["🥇","🥈","🥉"][i]:(i+1)+"."; h+=`<div class="trk${p.me?' lmine':''}"><div class="rank">${medal}</div><div class="m"><b>${who}</b><span>${p.plays} игр</span></div><div class="dur">${p.best}</div></div>`; });
+  if(me.rank&&me.rank>top.length) h+=`<div class="state">Твоё место: ${me.rank} · лучший ${me.best}</div>`;
+  el.innerHTML=h;
+}
+function showLeaders(){
+  $("#gstart").style.display="none"; $("#gplayarea").style.display="none"; $("#gend").style.display="block";
+  $("#gend").innerHTML=`<div id="leaders"><div class="spin"></div></div><button class="cta gbtn" id="gback" style="margin-top:12px;background:linear-gradient(180deg,#2a2a33,#1a1a20);border:1px solid var(--line)">← Назад</button>`;
+  $("#gback").addEventListener("click",()=>{haptic();$("#gend").style.display="none";$("#gstart").style.display="block";});
+  apiPost("/api/game/top",{}).then(renderLeaders).catch(()=>{const el=$("#leaders");if(el)el.innerHTML='<div class="state">Не удалось загрузить</div>';});
 }
 $("#gplay").addEventListener("click",()=>{haptic("medium");gameStart();});
+$("#gleaders").addEventListener("click",()=>{haptic();showLeaders();});
+function openGame(){ haptic("medium"); document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("on")); try{audio.pause();}catch(e){} if(curBtn){curBtn.textContent="▶";curBtn.classList.remove("playing");curBtn=null;} clearInterval(gTimer); showScreen("game"); $("#gbest").textContent=gBest; $("#gstart").style.display="block"; $("#gplayarea").style.display="none"; $("#gend").style.display="none"; }
+$("#gamebanner").addEventListener("click",openGame);
 
 // nav
 document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",()=>{
   haptic(); const n=a.dataset.nav;
-  if(n==="mymusic"){ openChat("mymusic"); return; }
   document.querySelectorAll(".nav a").forEach(x=>x.classList.remove("on")); a.classList.add("on");
   try{audio.pause();}catch(e){} if(curBtn){curBtn.textContent="▶";curBtn.classList.remove("playing");curBtn=null;}
   clearInterval(gTimer);
   if(n==="game"){ showScreen("game"); $("#gbest").textContent=gBest; $("#gstart").style.display="block"; $("#gplayarea").style.display="none"; $("#gend").style.display="none"; }
+  else if(n==="mymusic"){ showScreen("lib"); loadLibrary(); }
   else showScreen("home");
 }));
 
