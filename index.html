@@ -135,7 +135,7 @@
         <div class="search"><input id="q" placeholder="Артист, трек или ссылка…" autocomplete="off"><button class="cta" id="go">Найти</button></div>
       </div>
       <div class="gbanner" id="gamebanner"><div class="gbi">🎮</div><div class="gbt"><b>Угадай трек</b><span>Сыграй и попади в топ</span></div><div class="gba">▶</div></div>
-      <div class="tabs"><div class="on" data-tab="charts">🔥 Чарты</div><div data-tab="search">🔎 Поиск</div><div data-tab="genres">🎸 Жанры</div></div>
+      <div class="tabs"><div class="on" data-tab="charts">🔥 Чарты</div><div data-tab="new">🆕 Новое</div><div data-tab="search">🔎 Поиск</div><div data-tab="genres">🎸 Жанры</div></div>
       <div id="chips" class="chips" style="display:none"></div>
       <div class="kick"><span id="kicktxt">СЕЙЧАС СЛУШАЮТ</span><span class="sp"></span></div>
       <div id="list"></div>
@@ -203,9 +203,10 @@ function playPreview(url, btn){
   btn.innerHTML='<div class="eq"><i></i><i></i><i></i></div>'; btn.classList.add("playing"); curBtn=btn;
 }
 
-function render(tracks, ranked){
-  if(!tracks||!tracks.length){ list.innerHTML='<div class="state">Ничего не нашлось 😔</div>'; return; }
-  list.innerHTML = tracks.map((t,i)=>{
+function render(tracks, ranked){ renderTracks(list, tracks, ranked); }
+function renderTracks(container, tracks, ranked){
+  if(!tracks||!tracks.length){ container.innerHTML='<div class="state">Ничего не нашлось 😔</div>'; return; }
+  container.innerHTML = tracks.map((t,i)=>{
     const cover=(t.album&&(t.album.cover_small||t.album.cover))||"";
     const art=cover?`<img class="art" src="${cover}" loading="lazy">`:`<div class="art"></div>`;
     const rank=ranked?`<div class="rank">${i+1}</div>`:"";
@@ -214,12 +215,32 @@ function render(tracks, ranked){
       <div class="m"><b>${esc(t.title)}</b><span>${esc(t.artist&&t.artist.name||'')}</span></div>
       <div class="btn pv">▶</div><div class="btn dl">⬇</div></div>`;
   }).join("");
-  list.querySelectorAll(".trk").forEach(el=>{
+  container.querySelectorAll(".trk").forEach(el=>{
     el.querySelector(".pv").addEventListener("click",ev=>{ ev.stopPropagation(); haptic(); playPreview(el.dataset.prev, el.querySelector(".pv")); });
     el.querySelector(".dl").addEventListener("click",ev=>{ ev.stopPropagation(); download(el); });
     el.addEventListener("click",()=>download(el));
   });
 }
+// --- Новинки: альбомы -> треки альбома ---
+async function loadNew(){ chips.style.display="none"; kicktxt.textContent="СВЕЖИЕ АЛЬБОМЫ"; loading();
+  try{ const d=await jsonp(`${DEEZER}/chart/0/albums?limit=24`); renderAlbums((d&&d.data)||[]); }
+  catch(e){ list.innerHTML='<div class="state">Не удалось загрузить</div>'; } }
+function renderAlbums(albums){
+  if(!albums.length){ list.innerHTML='<div class="state">Пусто</div>'; return; }
+  list.innerHTML=albums.map((a,i)=>{ const cover=a.cover_medium||a.cover_small||a.cover||"";
+    const art=cover?`<img class="art" src="${cover}" loading="lazy">`:`<div class="art"></div>`;
+    const nb=a.nb_tracks?(' · '+a.nb_tracks+' тр.'):'';
+    return `<div class="trk alb" style="animation-delay:${(i*0.035).toFixed(3)}s" data-id="${a.id}" data-cover="${esc(cover)}">${art}<div class="m"><b>${esc(a.title)}</b><span>${esc(a.artist&&a.artist.name||'')}${nb}</span></div><div class="btn dl">›</div></div>`;
+  }).join("");
+  list.querySelectorAll(".trk.alb").forEach(el=>el.addEventListener("click",()=>{ haptic(); loadAlbum(el.dataset.id, el.dataset.cover); }));
+}
+async function loadAlbum(id, cover){ kicktxt.textContent="АЛЬБОМ"; loading();
+  try{ const d=await jsonp(`${DEEZER}/album/${id}`);
+    const tracks=(((d&&d.tracks)||{}).data||[]).map(t=>{ t.album={cover_small:cover}; return t; });
+    list.innerHTML='<div class="kick"><span class="lkback" id="abk">← назад к новинкам</span><span class="sp"></span></div><div id="albt"></div>';
+    renderTracks(document.getElementById("albt"), tracks, false);
+    document.getElementById("abk").addEventListener("click",loadNew);
+  }catch(e){ list.innerHTML='<div class="state">Не удалось открыть альбом</div>'; } }
 // База API: если лапка открыта с ?api=<адрес туннеля> (с GitHub Pages) — берём его;
 // если лапка отдаётся самим туннелем — пусто (относительные пути, тот же origin).
 const API=((new URLSearchParams(location.search)).get("api")||"").replace(/\/+$/,"");
@@ -247,6 +268,7 @@ document.querySelectorAll(".tabs div").forEach(tab=>tab.addEventListener("click"
   document.querySelectorAll(".tabs div").forEach(t=>t.classList.remove("on")); tab.classList.add("on"); haptic();
   const k=tab.dataset.tab;
   if(k==="charts") loadCharts();
+  else if(k==="new") loadNew();
   else if(k==="genres") showGenres();
   else { chips.style.display="none"; kicktxt.textContent="ВВЕДИ ЗАПРОС"; list.innerHTML='<div class="state">Начни печатать артиста или трек ☝️</div>'; $("#q").focus(); }
 }));
