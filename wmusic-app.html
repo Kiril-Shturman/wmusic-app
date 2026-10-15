@@ -437,6 +437,7 @@ let deb;$("#q").addEventListener("input",e=>{clearTimeout(deb);const v=e.target.
 // ===== Игра «Угадай трек» =====
 const ROUNDS=7, ROUND_SEC=15;
 let gPool=[], gRound=0, gScore=0, gStreak=0, gAnswer=null, gTimer=null, gTimeLeft=0;
+let gDuel=null, gRounds=[], gAnsName="", gAnsTitle="", gAnsId="";
 let gBest=+(localStorage.getItem("wm_best")||0);
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
 function showScreen(n){ [["home",n==="home"],["game",n==="game"],["lib",n==="lib"]].forEach(function(p){var el=document.getElementById(p[0]);if(!el)return;el.style.display=p[1]?"block":"none";if(p[1]){el.classList.remove("screenin");void el.offsetWidth;el.classList.add("screenin");}}); }
@@ -468,26 +469,44 @@ async function buildPool(){
   pool=pool.filter(t=>{const k=(t.artist.name+t.title).toLowerCase(); if(seen.has(k))return false; seen.add(k); return true;});
   return shuffle(pool);
 }
-async function gameStart(){
+async function gameStart(duel){
   $("#gstart").style.display="none"; $("#gend").style.display="none"; $("#gplayarea").style.display="none";
-  $("#gsub").textContent="Готовлю раунды…";
-  gPool=await buildPool();
-  if(gPool.length<8){ $("#gsub").textContent="Не удалось загрузить игру, попробуй ещё."; $("#gstart").style.display="block"; return; }
+  gDuel = duel || null;
+  if(gDuel){
+    gRounds = gDuel.rounds || [];
+    if(!gRounds.length){ $("#gsub").textContent="Вызов недоступен."; $("#gstart").style.display="block"; return; }
+  } else {
+    $("#gsub").textContent="Готовлю раунды…";
+    gPool=await buildPool();
+    if(gPool.length<8){ $("#gsub").textContent="Не удалось загрузить игру, попробуй ещё."; $("#gstart").style.display="block"; return; }
+    gRounds=[];
+  }
   gRound=0; gScore=0; gStreak=0;
-  $("#gsub").textContent="Слушай отрывок и выбери, что играет.";
+  $("#gsub").textContent = gDuel ? `Дуэль с ${gDuel.creator_name}: обгони ${gDuel.creator_score}!` : "Слушай отрывок и выбери, что играет.";
   $("#gplayarea").style.display="block"; nextRound();
 }
 function nextRound(){
   clearInterval(gTimer);
-  if(gRound>=ROUNDS){ gameEnd(); return; }
+  const total = gDuel ? gRounds.length : ROUNDS;
+  if(gRound>=total){ gameEnd(); return; }
   gRound++;
   $("#ground").textContent=gRound; $("#gstreak").textContent=gStreak; $("#gscore").textContent=gScore;
-  gAnswer=gPool[(gRound-1)%gPool.length];
-  const others=shuffle(gPool.filter(t=>t.id!==gAnswer.id)).slice(0,3);
-  const opts=shuffle([gAnswer,...others]);
+  $("#gtot")&&($("#gtot").textContent=total);
+  let opts, prev;
+  if(gDuel){
+    const r=gRounds[gRound-1]; opts=r.opts.slice(); gAnsId=String(r.ans);
+    const a=opts.find(o=>String(o.id)===gAnsId)||opts[0];
+    gAnsTitle=a.title; gAnsName=a.artist; prev=a.preview;
+  } else {
+    gAnswer=gPool[(gRound-1)%gPool.length];
+    const others=shuffle(gPool.filter(t=>t.id!==gAnswer.id)).slice(0,3);
+    opts=shuffle([gAnswer,...others]).map(t=>({id:t.id,title:t.title,artist:(t.artist&&t.artist.name)||"",preview:t.preview}));
+    gAnsId=String(gAnswer.id); gAnsTitle=gAnswer.title; gAnsName=(gAnswer.artist&&gAnswer.artist.name)||""; prev=gAnswer.preview;
+    gRounds.push({ans:gAnsId, opts:opts});
+  }
   $("#gnow").textContent="Слушай…";
-  try{ audio.src=gAnswer.preview; audio.currentTime=0; audio.play().catch(()=>{}); }catch(e){}
-  $("#gopts").innerHTML=opts.map(t=>`<div class="gopt" data-id="${t.id}"><b>${esc(t.title)}</b><span>${esc(t.artist.name)}</span></div>`).join("");
+  try{ audio.src=prev; audio.currentTime=0; audio.play().catch(()=>{}); }catch(e){}
+  $("#gopts").innerHTML=opts.map(t=>`<div class="gopt" data-id="${t.id}"><b>${esc(t.title)}</b><span>${esc(t.artist)}</span></div>`).join("");
   $("#gopts").querySelectorAll(".gopt").forEach(el=>el.addEventListener("click",()=>answer(el)));
   startTimer();
 }
@@ -500,7 +519,7 @@ function startTimer(){
 }
 function answer(el){
   clearInterval(gTimer); try{audio.pause();}catch(e){}
-  const correctId=String(gAnswer.id);
+  const correctId=gAnsId;
   const correct = el && el.dataset.id===correctId;
   if(correct){ gScore += 100 + Math.round(gTimeLeft/(ROUND_SEC*10)*100); gStreak++; haptic("medium"); }
   else { gStreak=0; haptic("heavy"); }
@@ -510,7 +529,7 @@ function answer(el){
     else if(el && x===el) x.classList.add("no");
     else x.classList.add("dim");
   });
-  $("#gnow").textContent = correct ? "✅ Верно!" : `❌ Это: ${gAnswer.artist.name} — ${gAnswer.title}`;
+  $("#gnow").textContent = correct ? "✅ Верно!" : `❌ Это: ${gAnsName} — ${gAnsTitle}`;
   setTimeout(nextRound,1600);
 }
 function gameEnd(){
@@ -519,17 +538,54 @@ function gameEnd(){
   if(gScore>gBest){ gBest=gScore; try{localStorage.setItem("wm_best",gBest);}catch(e){} }
   $("#gbest").textContent=gBest;
   $("#gend").style.display="block";
+  if(gDuel){ finishDuel(); return; }
   $("#gend").innerHTML=`<div class="gresult"><h1>${gScore}</h1><p>очков · лучший ${gBest}</p>
-    <button class="cta gbtn" id="gagain" style="margin-bottom:10px">↻ Ещё раз</button>
-    <button class="cta gbtn" id="gshare" style="background:linear-gradient(180deg,#2aa0ff,#1569e0)">📤 Поделиться результатом</button></div>
+    <button class="cta gbtn" id="gduel" style="margin-bottom:10px;background:linear-gradient(180deg,#8a5cff,#5b2bd6)">⚔️ Вызвать друга на дуэль</button>
+    <button class="cta gbtn" id="gagain" style="background:linear-gradient(180deg,#2a2a33,#1a1a20);border:1px solid var(--line)">↻ Ещё раз</button></div>
     <div id="leaders"><div class="spin"></div></div>`;
+  $("#gduel").addEventListener("click",challengeFriend);
   $("#gagain").addEventListener("click",()=>{haptic();gameStart();});
-  $("#gshare").addEventListener("click",()=>{ haptic();
-    const txt=`Я набрал ${gScore} очков в «Угадай трек» 🎮🎧 Обгонишь?`;
-    const url=`https://t.me/share/url?url=${encodeURIComponent("https://t.me/WkingMusicbot")}&text=${encodeURIComponent(txt)}`;
-    if(TG&&TG.openTelegramLink) TG.openTelegramLink(url); else window.open(url,"_blank");
-  });
   apiPost("/api/game/score",{score:gScore}).then(renderLeaders).catch(()=>{const el=$("#leaders");if(el)el.innerHTML="";});
+}
+function challengeFriend(){
+  if(!API){ toast("Открой приложение из бота для дуэли"); return; }
+  if(!gRounds.length){ toast("Сыграй раунд сначала"); return; }
+  haptic("medium"); toast("Создаю вызов…");
+  apiPost("/api/duel/create",{rounds:gRounds,score:gScore}).then(d=>{
+    if(!d||!d.id){ toast("Не удалось создать дуэль"); return; }
+    const link="https://t.me/WkingMusicbot?start=duel_"+d.id;
+    const txt=`Я набрал ${gScore} в «Угадай трек» ⚔️ Обгонишь?`;
+    const url=`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(txt)}`;
+    if(TG&&TG.openTelegramLink) TG.openTelegramLink(url); else window.open(url,"_blank");
+  }).catch(()=>toast("Ошибка сети"));
+}
+function finishDuel(){
+  const d=gDuel; gDuel=null;
+  $("#gend").innerHTML=`<div class="gresult"><h1>${gScore}</h1><p>твой счёт</p><div class="spin"></div></div>`;
+  apiPost("/api/game/score",{score:gScore}).catch(()=>{});
+  apiPost("/api/duel/finish",{id:d.id,score:gScore}).then(r=>{
+    const cs=(r&&typeof r.creator_score==="number")?r.creator_score:(d.creator_score||0);
+    const nm=(r&&r.creator_name)||d.creator_name||"Соперник";
+    const tie=gScore===cs, win=gScore>cs;
+    const verdict=tie?"Ничья 🤝":(win?"Победа! 🏆":"Поражение 😤");
+    $("#gend").innerHTML=`<div class="gresult"><h1 style="font-size:40px">${verdict}</h1>
+      <p style="font-size:19px;margin:12px 0;color:#fff">Ты ${gScore} : ${cs} ${esc(nm)}</p>
+      <button class="cta gbtn" id="grevenge" style="margin-bottom:10px;background:linear-gradient(180deg,#8a5cff,#5b2bd6)">⚔️ Ответный вызов</button>
+      <button class="cta gbtn" id="gagain" style="background:linear-gradient(180deg,#2a2a33,#1a1a20);border:1px solid var(--line)">🎮 Обычная игра</button></div>`;
+    $("#grevenge").addEventListener("click",challengeFriend);
+    $("#gagain").addEventListener("click",()=>{haptic();gameStart();});
+  }).catch(()=>{ $("#gend").innerHTML=`<div class="gresult"><h1>${gScore}</h1><p>очков</p><button class="cta gbtn" id="gagain">Играть ещё</button></div>`; $("#gagain").addEventListener("click",()=>{haptic();gameStart();}); });
+}
+const DUELID=((new URLSearchParams(location.search)).get("duel")||((TG&&TG.initDataUnsafe&&TG.initDataUnsafe.start_param)||"")).replace(/^duel_/,"");
+function maybeStartDuel(){
+  if(!DUELID) return;
+  if(!API){ toast("Дуэль доступна при открытии из бота"); return; }
+  openGame(); $("#gstart").style.display="none"; $("#gsub").textContent="Загружаю вызов…";
+  apiPost("/api/duel/get",{id:DUELID}).then(d=>{
+    if(!d||!d.rounds||!d.rounds.length){ toast("Вызов недоступен"); $("#gstart").style.display="block"; return; }
+    if(d.is_creator){ toast("Это твой вызов — ждём соперника!"); $("#gstart").style.display="block"; return; }
+    gameStart({id:DUELID,creator_name:d.creator_name,creator_score:d.creator_score,rounds:d.rounds});
+  }).catch(()=>{ toast("Не удалось загрузить вызов"); $("#gstart").style.display="block"; });
 }
 function renderLeaders(d){
   const el=$("#leaders"); if(!el)return;
@@ -692,6 +748,7 @@ function showRecResult(d){
 }
 
 loadCharts();
+maybeStartDuel();
 </script>
 </body>
 </html>
