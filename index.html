@@ -217,6 +217,13 @@
   .rec .rb{padding:11px 18px;border-radius:12px;background:var(--blue);color:#fff;font-weight:700;font-size:14px;cursor:pointer}
   .rec .rb.sec{background:var(--card2);border:1px solid var(--line)}
   body.pl .wrap{padding-bottom:150px}
+  /* ===== Радио ===== */
+  #radio{display:none}
+  .stations{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
+  .station{height:84px;border-radius:16px;display:flex;align-items:flex-end;padding:12px;font-weight:800;font-size:15px;color:#fff;cursor:pointer;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+  .station .wv{position:absolute;top:11px;right:11px;opacity:.55}
+  .station .wv svg{width:20px;height:20px}
+  .station:active{transform:scale(.97)}
 </style>
 </head>
 <body>
@@ -271,6 +278,15 @@
       <div id="libbody"><div class="spin"></div></div>
     </div>
 
+    <!-- ===== РАДИО ===== -->
+    <div id="radio">
+      <div class="hero"><h1 style="font-size:28px">РАДИО</h1><p class="sub">Тап по станции — бесконечный поток.</p></div>
+      <div class="kick">СТАНЦИИ<span class="sp"></span></div>
+      <div class="stations" id="stations"></div>
+      <div class="kick">ПО ЖАНРАМ<span class="sp"></span></div>
+      <div class="stations" id="genrestations"></div>
+    </div>
+
   </div>
 
   <div class="toast" id="toast"></div>
@@ -318,6 +334,7 @@
 
   <div class="nav">
     <a class="on" data-nav="home"><span class="i line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span><span class="i fill"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21 3v12.4a3.5 3.5 0 1 1-2-3.163V7.37L9 9.04v7.96a3.5 3.5 0 1 1-2-3.163V5.5a1 1 0 0 1 .836-.986l12-2A1 1 0 0 1 21 3z"/></svg></span>Музыка</a>
+    <a data-nav="radio"><span class="i line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/></svg></span><span class="i fill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9"/><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5"/><circle cx="12" cy="9" r="2.4" fill="currentColor" stroke="none"/><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47"/><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1"/><path d="M9.5 18h5"/><path d="m8 22 4-11 4 11"/></svg></span>Радио</a>
     <a data-nav="mymusic"><span class="i line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></span><span class="i fill"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>Моя музыка</a>
   </div>
 
@@ -440,7 +457,7 @@ let gPool=[], gRound=0, gScore=0, gStreak=0, gAnswer=null, gTimer=null, gTimeLef
 let gDuel=null, gRounds=[], gAnsName="", gAnsTitle="", gAnsId="";
 let gBest=+(localStorage.getItem("wm_best")||0);
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
-function showScreen(n){ [["home",n==="home"],["game",n==="game"],["lib",n==="lib"]].forEach(function(p){var el=document.getElementById(p[0]);if(!el)return;el.style.display=p[1]?"block":"none";if(p[1]){el.classList.remove("screenin");void el.offsetWidth;el.classList.add("screenin");}}); }
+function showScreen(n){ [["home",n==="home"],["game",n==="game"],["lib",n==="lib"],["radio",n==="radio"]].forEach(function(p){var el=document.getElementById(p[0]);if(!el)return;el.style.display=p[1]?"block":"none";if(p[1]){el.classList.remove("screenin");void el.offsetWidth;el.classList.add("screenin");}}); }
 
 // ===== Моя музыка / плейлисты (через API бэкенда) =====
 let gLib=null;
@@ -619,6 +636,7 @@ document.querySelectorAll(".nav a").forEach(a=>a.addEventListener("click",()=>{
   clearInterval(gTimer);
   if(n==="game"){ try{PA.pause();}catch(e){} showScreen("game"); $("#gbest").textContent=gBest; $("#gstart").style.display="block"; $("#gplayarea").style.display="none"; $("#gend").style.display="none"; }
   else if(n==="mymusic"){ showScreen("lib"); loadLibrary(); }
+  else if(n==="radio"){ showScreen("radio"); loadRadio(); }
   else showScreen("home");
 }));
 
@@ -745,6 +763,37 @@ function showRecResult(d){
     <div class="rbtns" style="margin-top:16px">${canPlay?'<div class="rb" id="rplay">Слушать</div>':''}<div class="rb sec" id="rdl">${canPlay?'В чат':'Искать'}</div></div>`;
   if(canPlay){ $("#rplay").addEventListener("click",()=>{ r.classList.remove("show"); playList([{id:d.id,title:d.title,artist:{name:d.artist},cover:d.cover,duration:d.dur,preview:d.preview}],0); openNP(); }); }
   $("#rdl").addEventListener("click",()=>{ r.classList.remove("show"); if(canPlay){ apiPost("/api/download",{id:d.id}).then(x=>toast(x&&x.ok?"Трек отправлен в чат ✓":"Не удалось")); } else { showScreen("home"); document.querySelector('.tabs [data-tab="search"]').click(); $("#q").value=(d.artist+" "+d.title).trim(); doSearch($("#q").value); } });
+}
+
+// ============ РАДИО (вкладка) ============
+const STATIONS=[
+  {n:"Горячее",c:"0",g:"linear-gradient(135deg,#ff5f6d,#ffc371)"},
+  {n:"Чилл",q:"chill lofi relax",g:"linear-gradient(135deg,#355c7d,#6c5b7b)"},
+  {n:"За рулём",q:"road trip driving hits",g:"linear-gradient(135deg,#2b5876,#4e4376)"},
+  {n:"Спортзал",q:"workout gym motivation",g:"linear-gradient(135deg,#f12711,#f5af19)"},
+  {n:"Вечеринка",q:"party dance hits",g:"linear-gradient(135deg,#8a2be2,#ff6ec4)"},
+  {n:"Фокус",q:"focus study instrumental lofi",g:"linear-gradient(135deg,#1d4350,#a43931)"},
+];
+const WVIC='<div class="wv"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg></div>';
+const GGRADS=["linear-gradient(135deg,#f953c6,#b91d73)","linear-gradient(135deg,#43cea2,#185a9d)","linear-gradient(135deg,#ee0979,#ff6a00)","linear-gradient(135deg,#396afc,#2948ff)","linear-gradient(135deg,#c94b4b,#4b134f)","linear-gradient(135deg,#11998e,#38ef7d)","linear-gradient(135deg,#654ea3,#eaafc8)","linear-gradient(135deg,#f7971e,#ffd200)","linear-gradient(135deg,#1a2a6c,#b21f1f)","linear-gradient(135deg,#00c6ff,#0072ff)"];
+let radioInit=false;
+function loadRadio(){
+  if(radioInit) return; radioInit=true;
+  $("#stations").innerHTML=STATIONS.map((s,i)=>`<div class="station" data-i="${i}" style="background:${s.g}">${WVIC}${esc(s.n)}</div>`).join("");
+  $("#stations").querySelectorAll(".station").forEach(el=>el.addEventListener("click",()=>playStation(STATIONS[+el.dataset.i])));
+  $("#genrestations").innerHTML=GENRES.map((g,i)=>`<div class="station" data-g="${g[1]}" data-n="${esc(g[0])}" style="background:${GGRADS[i%GGRADS.length]}">${WVIC}${esc(g[0])}</div>`).join("");
+  $("#genrestations").querySelectorAll(".station").forEach(el=>el.addEventListener("click",()=>playStation({n:el.dataset.n,c:el.dataset.g})));
+}
+async function playStation(st){
+  haptic("medium"); toast("Запускаю станцию…");
+  let tracks=[];
+  try{
+    if(st.c!==undefined){ const d=await jsonp(`${DEEZER}/chart/${st.c}/tracks?limit=50`); tracks=(d&&d.data)||[]; }
+    else { const d=await jsonp(`${DEEZER}/search?q=${encodeURIComponent(st.q)}&limit=50`); tracks=(d&&d.data)||[]; }
+  }catch(e){}
+  tracks=tracks.filter(t=>t&&t.id&&(t.preview||API));
+  if(!tracks.length){ toast("Станция недоступна, попробуй другую"); return; }
+  playList(shuffle(tracks),0); openNP();
 }
 
 loadCharts();
